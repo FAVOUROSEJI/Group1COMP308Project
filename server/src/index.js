@@ -20,6 +20,9 @@ async function startServer() {
   const server = new ApolloServer({
     typeDefs,
     resolvers,
+    context: ({ req }) => ({
+      token: req.headers.authorization || "",
+    }),
   });
 
   await server.start();
