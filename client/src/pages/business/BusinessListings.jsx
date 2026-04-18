@@ -13,6 +13,18 @@ const CREATE_LISTING = gql`
     }
   }
 `;
+const UPDATE_LISTING = gql`
+  mutation UpdateBusinessListing($id: ID!, $name: String, $description: String, $category: String) {
+    updateBusinessListing(id: $id, name: $name, description: $description, category: $category) {
+      id name description category author { id name }
+    }
+  }
+`;
+const DELETE_LISTING = gql`
+  mutation DeleteBusinessListing($id: ID!) {
+    deleteBusinessListing(id: $id)
+  }
+`;
 
 const categoryColors = {
   restaurant: "bg-orange-50 border-orange-200 hover:border-orange-400",
@@ -38,14 +50,42 @@ export default function BusinessListings() {
     onCompleted: () => { refetch(); setForm({ name: "", description: "", category: "retail" }); setShowForm(false); },
     onError: (e) => alert(e.message),
   });
+  const [updateListing, { loading: updating }] = useMutation(UPDATE_LISTING, {
+    onCompleted: () => { refetch(); setEditingId(null); },
+    onError: (e) => alert(e.message),
+  });
+  const [deleteListing] = useMutation(DELETE_LISTING, {
+    onCompleted: () => refetch(),
+    onError: (e) => alert(e.message),
+  });
+
   const [form, setForm] = useState({ name: "", description: "", category: "retail" });
   const [showForm, setShowForm] = useState(false);
   const [search, setSearch] = useState("");
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState({ name: "", description: "", category: "retail" });
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!form.name.trim() || !form.description.trim()) return alert("Please fill in all fields.");
     createListing({ variables: form });
+  };
+
+  const startEdit = (biz) => {
+    setEditingId(biz.id);
+    setEditForm({ name: biz.name, description: biz.description, category: biz.category });
+  };
+
+  const handleUpdate = (e) => {
+    e.preventDefault();
+    if (!editForm.name.trim() || !editForm.description.trim()) return alert("Please fill in all fields.");
+    updateListing({ variables: { id: editingId, ...editForm } });
+  };
+
+  const handleDelete = (id) => {
+    if (window.confirm("Delete this listing? All its reviews and deals will also be removed.")) {
+      deleteListing({ variables: { id } });
+    }
   };
 
   const filtered = data?.getBusinessListings?.filter(
@@ -138,32 +178,65 @@ export default function BusinessListings() {
         )}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filtered?.map((biz) => (
-            <div key={biz.id} className={`rounded-2xl shadow p-6 border-2 transition-all hover:shadow-lg cursor-pointer ${categoryColors[biz.category] || categoryColors.other}`}>
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex items-start gap-3">
-                  <span className="text-3xl">{categoryEmoji[biz.category] || "🏢"}</span>
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-900">{biz.name}</h3>
-                    <span className={`inline-block text-xs font-bold px-3 py-1 rounded-full capitalize mt-1 ${categoryBadge[biz.category] || categoryBadge.other}`}>
-                      {biz.category}
-                    </span>
+            <div key={biz.id} className={`rounded-2xl shadow p-6 border-2 transition-all hover:shadow-lg ${categoryColors[biz.category] || categoryColors.other}`}>
+              {editingId === biz.id ? (
+                <form onSubmit={handleUpdate} className="space-y-3">
+                  <input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                    className="w-full bg-white border-2 border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-purple-500" />
+                  <textarea value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} rows={2}
+                    className="w-full bg-white border-2 border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-purple-500 resize-none" />
+                  <select value={editForm.category} onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                    className="w-full bg-white border-2 border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-purple-500">
+                    <option value="restaurant">🍽️ Restaurant</option>
+                    <option value="retail">🛍️ Retail</option>
+                    <option value="services">🔧 Services</option>
+                    <option value="health">🏥 Health</option>
+                    <option value="other">🏢 Other</option>
+                  </select>
+                  <div className="flex gap-2">
+                    <button type="submit" disabled={updating} className="text-xs bg-purple-600 text-white px-4 py-1.5 rounded-lg hover:bg-purple-700 disabled:opacity-50 transition">
+                      {updating ? "Saving..." : "Save"}
+                    </button>
+                    <button type="button" onClick={() => setEditingId(null)} className="text-xs bg-gray-100 text-gray-700 px-4 py-1.5 rounded-lg hover:bg-gray-200 transition">
+                      Cancel
+                    </button>
                   </div>
-                </div>
-              </div>
-              <p className="text-gray-700 mb-5 leading-relaxed">{biz.description}</p>
-              <p className="text-xs text-gray-500 mb-4">by <span className="font-bold text-gray-700">{biz.author?.name}</span></p>
-              <div className="flex gap-2">
-                <button onClick={() => navigate(`/reviews?businessId=${biz.id}&businessName=${encodeURIComponent(biz.name)}`)}
-                  className="flex-1 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 font-bold px-4 py-2 rounded-lg transition-all text-sm">
-                  ⭐ Reviews
-                </button>
-                {user?.id === biz.author?.id && (
-                  <button onClick={() => navigate(`/post-deal?businessId=${biz.id}&businessName=${encodeURIComponent(biz.name)}`)}
-                    className="flex-1 bg-purple-100 hover:bg-purple-200 text-purple-700 font-bold px-4 py-2 rounded-lg transition-all text-sm">
-                    📢 Post Deal
-                  </button>
-                )}
-              </div>
+                </form>
+              ) : (
+                <>
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex items-start gap-3">
+                      <span className="text-3xl">{categoryEmoji[biz.category] || "🏢"}</span>
+                      <div>
+                        <h3 className="text-xl font-bold text-gray-900">{biz.name}</h3>
+                        <span className={`inline-block text-xs font-bold px-3 py-1 rounded-full capitalize mt-1 ${categoryBadge[biz.category] || categoryBadge.other}`}>
+                          {biz.category}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-gray-700 mb-4 leading-relaxed">{biz.description}</p>
+                  <p className="text-xs text-gray-500 mb-4">by <span className="font-bold text-gray-700">{biz.author?.name}</span></p>
+                  <div className="flex flex-wrap gap-2">
+                    <button onClick={() => navigate(`/reviews?businessId=${biz.id}&businessName=${encodeURIComponent(biz.name)}`)}
+                      className="flex-1 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 font-bold px-4 py-2 rounded-lg transition-all text-sm">
+                      ⭐ Reviews
+                    </button>
+                    {user?.id === biz.author?.id && (
+                      <>
+                        <button onClick={() => navigate(`/post-deal?businessId=${biz.id}&businessName=${encodeURIComponent(biz.name)}`)}
+                          className="flex-1 bg-purple-100 hover:bg-purple-200 text-purple-700 font-bold px-4 py-2 rounded-lg transition-all text-sm">
+                          📢 Deal
+                        </button>
+                        <button onClick={() => startEdit(biz)}
+                          className="text-xs bg-blue-100 text-blue-700 px-3 py-2 rounded-lg hover:bg-blue-200 transition font-bold">✏️</button>
+                        <button onClick={() => handleDelete(biz.id)}
+                          className="text-xs bg-red-100 text-red-600 px-3 py-2 rounded-lg hover:bg-red-200 transition font-bold">🗑️</button>
+                      </>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           ))}
         </div>

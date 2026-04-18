@@ -1,21 +1,34 @@
 import { useState } from "react";
 import { gql, useQuery, useMutation } from "@apollo/client";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 
 const GET_REVIEWS = gql`
   query GetReviews($businessId: ID!) {
-    getReviews(businessId: $businessId) { id content rating createdAt author { id name } }
+    getReviews(businessId: $businessId) {
+      id content rating createdAt ownerReply author { id name }
+    }
   }
 `;
 const CREATE_REVIEW = gql`
   mutation CreateReview($businessId: ID!, $content: String!, $rating: Int!) {
     createReview(businessId: $businessId, content: $content, rating: $rating) {
-      id content rating createdAt author { id name }
+      id content rating createdAt ownerReply author { id name }
+    }
+  }
+`;
+const DELETE_REVIEW = gql`
+  mutation DeleteReview($id: ID!) { deleteReview(id: $id) }
+`;
+const ADD_REVIEW_REPLY = gql`
+  mutation AddReviewReply($reviewId: ID!, $reply: String!) {
+    addReviewReply(reviewId: $reviewId, reply: $reply) {
+      id ownerReply
     }
   }
 `;
 const GET_LISTINGS = gql`
-  query { getBusinessListings { id name } }
+  query { getBusinessListings { id name author { id } } }
 `;
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
@@ -43,6 +56,7 @@ async function analyzeSentiment(reviews) {
 export default function CustomerReviews() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
   const params = new URLSearchParams(location.search);
   const { data: listingsData } = useQuery(GET_LISTINGS);
   const [selectedBiz, setSelectedBiz] = useState({ id: params.get("businessId") || "", name: params.get("businessName") || "" });
@@ -51,10 +65,21 @@ export default function CustomerReviews() {
     onCompleted: () => { refetch(); setForm({ content: "", rating: 5 }); setShowForm(false); },
     onError: (e) => alert(e.message),
   });
+  const [deleteReview] = useMutation(DELETE_REVIEW, {
+    onCompleted: () => refetch(),
+    onError: (e) => alert(e.message),
+  });
+  const [addReviewReply] = useMutation(ADD_REVIEW_REPLY, {
+    onCompleted: () => refetch(),
+    onError: (e) => alert(e.message),
+  });
+
   const [form, setForm] = useState({ content: "", rating: 5 });
   const [showForm, setShowForm] = useState(false);
   const [sentiment, setSentiment] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [replyText, setReplyText] = useState("");
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -63,12 +88,22 @@ export default function CustomerReviews() {
     createReview({ variables: { businessId: selectedBiz.id, content: form.content, rating: parseInt(form.rating) } });
   };
 
+  const handleReply = (e, reviewId) => {
+    e.preventDefault();
+    if (!replyText.trim()) return alert("Please write a reply.");
+    addReviewReply({ variables: { reviewId, reply: replyText } });
+    setReplyingTo(null);
+    setReplyText("");
+  };
+
   const handleAnalyze = async () => {
     if (!data?.getReviews?.length) return alert("No reviews to analyze.");
     setAnalyzing(true);
     setSentiment(await analyzeSentiment(data.getReviews));
     setAnalyzing(false);
   };
+
+  const isBusinessOwner = listingsData?.getBusinessListings?.find(b => b.id === selectedBiz.id)?.author?.id === user?.id;
 
   const avgRating = data?.getReviews?.length
     ? (data.getReviews.reduce((sum, r) => sum + r.rating, 0) / data.getReviews.length).toFixed(1)
@@ -200,7 +235,49 @@ export default function CustomerReviews() {
                     <span className="text-xs text-gray-400 font-semibold">{new Date(parseInt(review.createdAt)).toLocaleDateString()}</span>
                   </div>
                   <p className="text-gray-800 mb-3 leading-relaxed">{review.content}</p>
-                  <p className="text-sm text-gray-500">by <span className="font-bold text-gray-700">{review.author?.name}</span></p>
+
+                  {review.ownerReply && (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3 mb-2 ml-4">
+                      <p className="text-xs font-semibold text-yellow-700 mb-1">🏪 Owner's Reply</p>
+                      <p className="text-sm text-gray-700">{review.ownerReply}</p>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between items-center flex-wrap gap-2">
+                    <p className="text-sm text-gray-500">by <span className="font-bold text-gray-700">{review.author?.name}</span></p>
+                    <div className="flex gap-2">
+                      {isBusinessOwner && !review.ownerReply && (
+                        <button onClick={() => { setReplyingTo(review.id); setReplyText(""); }}
+                          className="text-xs bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full hover:bg-yellow-200 transition">
+                          💬 Reply
+                        </button>
+                      )}
+                      {isBusinessOwner && review.ownerReply && (
+                        <button onClick={() => { setReplyingTo(review.id); setReplyText(review.ownerReply); }}
+                          className="text-xs bg-gray-100 text-gray-600 px-3 py-1 rounded-full hover:bg-gray-200 transition">
+                          ✏️ Edit Reply
+                        </button>
+                      )}
+                      {review.author?.id === user?.id && (
+                        <button onClick={() => { if (window.confirm("Delete your review?")) deleteReview({ variables: { id: review.id } }); }}
+                          className="text-xs bg-red-100 text-red-600 px-3 py-1 rounded-full hover:bg-red-200 transition">
+                          🗑️ Delete
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {replyingTo === review.id && (
+                    <form onSubmit={(e) => handleReply(e, review.id)} className="mt-3 ml-4 space-y-2">
+                      <textarea placeholder="Write your reply as the business owner..." value={replyText}
+                        onChange={(e) => setReplyText(e.target.value)} rows={2}
+                        className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 resize-none" />
+                      <div className="flex gap-2">
+                        <button type="submit" className="text-xs bg-yellow-500 text-white px-4 py-1.5 rounded-lg hover:bg-yellow-600 transition">Post Reply</button>
+                        <button type="button" onClick={() => setReplyingTo(null)} className="text-xs bg-gray-100 text-gray-600 px-4 py-1.5 rounded-lg hover:bg-gray-200 transition">Cancel</button>
+                      </div>
+                    </form>
+                  )}
                 </div>
               ))}
               {data?.getReviews?.length === 0 && (

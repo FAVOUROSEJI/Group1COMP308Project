@@ -1,15 +1,34 @@
 import { useState } from "react";
 import { gql, useQuery, useMutation } from "@apollo/client";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 
 const GET_EVENTS = gql`
-  query { getEvents { id title description date location organizer { id name } } }
+  query {
+    getEvents {
+      id title description date location
+      organizer { id name }
+      volunteers { id name }
+    }
+  }
 `;
 const CREATE_EVENT = gql`
   mutation CreateEvent($title: String!, $description: String!, $date: String!, $location: String!) {
     createEvent(title: $title, description: $description, date: $date, location: $location) {
-      id title description date location organizer { id name }
+      id title description date location organizer { id name } volunteers { id name }
     }
+  }
+`;
+const JOIN_EVENT = gql`
+  mutation JoinEvent($eventId: ID!) {
+    joinEvent(eventId: $eventId) {
+      id volunteers { id name }
+    }
+  }
+`;
+const DELETE_EVENT = gql`
+  mutation DeleteEvent($id: ID!) {
+    deleteEvent(id: $id)
   }
 `;
 
@@ -36,11 +55,21 @@ async function predictBestTiming(title, description) {
 
 export default function EventsPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { data, loading, refetch } = useQuery(GET_EVENTS);
   const [createEvent, { loading: creating }] = useMutation(CREATE_EVENT, {
     onCompleted: () => { refetch(); setForm({ title: "", description: "", date: "", location: "" }); setShowForm(false); },
     onError: (e) => alert(e.message),
   });
+  const [joinEvent] = useMutation(JOIN_EVENT, {
+    onCompleted: () => refetch(),
+    onError: (e) => alert(e.message),
+  });
+  const [deleteEvent] = useMutation(DELETE_EVENT, {
+    onCompleted: () => refetch(),
+    onError: (e) => alert(e.message),
+  });
+
   const [form, setForm] = useState({ title: "", description: "", date: "", location: "" });
   const [showForm, setShowForm] = useState(false);
   const [timings, setTimings] = useState({});
@@ -69,6 +98,9 @@ export default function EventsPage() {
     setAiSuggestion(result);
     setAiLoading(false);
   };
+
+  const hasJoined = (event) => event.volunteers?.some((v) => v.id === user?.id);
+  const isOrganizer = (event) => event.organizer?.id === user?.id;
 
   const upcoming = data?.getEvents?.filter(e => new Date(e.date) >= new Date()) || [];
   const past = data?.getEvents?.filter(e => new Date(e.date) < new Date()) || [];
@@ -158,7 +190,6 @@ export default function EventsPage() {
 
         {loading && <div className="text-center py-12"><p className="text-gray-500 text-lg">Loading events...</p></div>}
 
-        {/* Upcoming Events */}
         {upcoming.length > 0 && (
           <div className="mb-12">
             <h2 className="text-2xl font-headline font-bold text-gray-900 mb-6">📅 Upcoming Events</h2>
@@ -175,23 +206,48 @@ export default function EventsPage() {
                     <p>📍 {event.location}</p>
                     <p className="text-xs text-gray-500">by {event.organizer?.name}</p>
                   </div>
+
+                  {event.volunteers?.length > 0 && (
+                    <div className="bg-orange-50 border border-orange-100 rounded-lg px-3 py-2 mb-4">
+                      <p className="text-xs text-orange-600 font-semibold mb-1">🙋 Volunteers ({event.volunteers.length})</p>
+                      <p className="text-xs text-orange-800">{event.volunteers.map((v) => v.name).join(", ")}</p>
+                    </div>
+                  )}
+
                   {timings[event.id] && (
                     <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
                       <p className="text-xs font-bold text-orange-700 mb-2">🤖 AI TIMING ANALYSIS</p>
                       <p className="text-sm text-orange-900 leading-relaxed">{timings[event.id]}</p>
                     </div>
                   )}
-                  <button onClick={() => handlePredict(event)} disabled={predicting[event.id]}
-                    className="w-full bg-orange-100 hover:bg-orange-200 disabled:opacity-50 text-orange-700 font-bold px-4 py-2 rounded-full transition-all">
-                    {predicting[event.id] ? "🤖 Analyzing..." : "🤖 Get Timing Analysis"}
-                  </button>
+
+                  <div className="flex flex-wrap gap-2">
+                    {!isOrganizer(event) && (
+                      <button
+                        onClick={() => joinEvent({ variables: { eventId: event.id } })}
+                        disabled={hasJoined(event)}
+                        className="flex-1 bg-orange-600 text-white font-bold px-4 py-2 rounded-full hover:bg-orange-700 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm">
+                        {hasJoined(event) ? "✅ Joined" : "🙋 Join Event"}
+                      </button>
+                    )}
+                    <button onClick={() => handlePredict(event)} disabled={predicting[event.id]}
+                      className="flex-1 bg-orange-100 hover:bg-orange-200 disabled:opacity-50 text-orange-700 font-bold px-4 py-2 rounded-full transition-all text-sm">
+                      {predicting[event.id] ? "🤖 Analyzing..." : "🤖 Get Timing Analysis"}
+                    </button>
+                    {isOrganizer(event) && (
+                      <button
+                        onClick={() => { if (window.confirm("Delete this event?")) deleteEvent({ variables: { id: event.id } }); }}
+                        className="text-xs bg-red-100 text-red-600 px-3 py-2 rounded-full hover:bg-red-200 transition font-bold">
+                        🗑️
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* Past Events */}
         {past.length > 0 && (
           <div className="mb-8">
             <h2 className="text-2xl font-headline font-bold text-gray-500 mb-6">Past Events</h2>
@@ -200,6 +256,14 @@ export default function EventsPage() {
                 <div key={event.id} className="bg-gray-100 rounded-2xl p-6 border border-gray-300 opacity-60">
                   <p className="font-bold text-gray-700">{event.title}</p>
                   <p className="text-xs text-gray-600 mt-2">🗓️ {new Date(event.date).toLocaleDateString()} • 📍 {event.location}</p>
+                  <p className="text-xs text-gray-500 mt-1">by {event.organizer?.name}</p>
+                  {isOrganizer(event) && (
+                    <button
+                      onClick={() => { if (window.confirm("Delete this event?")) deleteEvent({ variables: { id: event.id } }); }}
+                      className="mt-2 text-xs bg-red-100 text-red-600 px-3 py-1 rounded-full hover:bg-red-200 transition">
+                      🗑️ Delete
+                    </button>
+                  )}
                 </div>
               ))}
             </div>

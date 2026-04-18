@@ -9,7 +9,7 @@ const Review = require("../models/Review");
 const Deal = require("../models/Deal");
 const Event = require("../models/Event");
 
-const JWT_SECRET = "secret123";
+const JWT_SECRET = process.env.JWT_SECRET || "secret123";
 
 const getUserFromToken = async (token) => {
   if (!token) throw new Error("Not authenticated");
@@ -28,7 +28,7 @@ const resolvers = {
     },
 
     getHelpRequests: async () => {
-      return await HelpRequest.find().populate("author").sort({ createdAt: -1 });
+      return await HelpRequest.find().populate("author").populate("volunteers").sort({ createdAt: -1 });
     },
 
     getEmergencyAlerts: async () => {
@@ -53,7 +53,7 @@ const resolvers = {
     },
 
     getEvents: async () => {
-      return await Event.find().populate("organizer").sort({ createdAt: -1 });
+      return await Event.find().populate("organizer").populate("volunteers").sort({ createdAt: -1 });
     },
   },
 
@@ -106,6 +106,9 @@ const resolvers = {
 
     createDeal: async (_, { businessId, title, description }, { token }) => {
       const user = await getUserFromToken(token);
+      const listing = await BusinessListing.findById(businessId);
+      if (!listing) throw new Error("Business listing not found");
+      if (String(listing.author) !== String(user._id)) throw new Error("Not authorized to post deals for this business");
       const deal = await Deal.create({ title, description, business: businessId });
       return await Deal.findById(deal._id).populate("business");
     },
@@ -113,7 +116,107 @@ const resolvers = {
     createEvent: async (_, { title, description, date, location }, { token }) => {
       const user = await getUserFromToken(token);
       const event = await Event.create({ title, description, date, location, organizer: user._id });
-      return await Event.findById(event._id).populate("organizer");
+      return await Event.findById(event._id).populate("organizer").populate("volunteers");
+    },
+
+    joinEvent: async (_, { eventId }, { token }) => {
+      const user = await getUserFromToken(token);
+      const event = await Event.findById(eventId);
+      if (!event) throw new Error("Event not found");
+      if (event.volunteers.map(String).includes(String(user._id))) throw new Error("Already joined this event");
+      event.volunteers.push(user._id);
+      await event.save();
+      return await Event.findById(eventId).populate("organizer").populate("volunteers");
+    },
+
+    volunteerForHelp: async (_, { requestId }, { token }) => {
+      const user = await getUserFromToken(token);
+      const req = await HelpRequest.findById(requestId);
+      if (!req) throw new Error("Help request not found");
+      if (String(req.author) === String(user._id)) throw new Error("Cannot volunteer for your own request");
+      if (req.volunteers.map(String).includes(String(user._id))) throw new Error("Already volunteered");
+      req.volunteers.push(user._id);
+      await req.save();
+      return await HelpRequest.findById(requestId).populate("author").populate("volunteers");
+    },
+
+    fulfillHelpRequest: async (_, { requestId }, { token }) => {
+      const user = await getUserFromToken(token);
+      const req = await HelpRequest.findById(requestId);
+      if (!req) throw new Error("Help request not found");
+      if (String(req.author) !== String(user._id)) throw new Error("Only the author can mark this as fulfilled");
+      req.status = "fulfilled";
+      await req.save();
+      return await HelpRequest.findById(requestId).populate("author").populate("volunteers");
+    },
+
+    deleteHelpRequest: async (_, { id }, { token }) => {
+      const user = await getUserFromToken(token);
+      const req = await HelpRequest.findById(id);
+      if (!req) throw new Error("Help request not found");
+      if (String(req.author) !== String(user._id)) throw new Error("Not authorized");
+      await HelpRequest.findByIdAndDelete(id);
+      return true;
+    },
+
+    updateBusinessListing: async (_, { id, name, description, category }, { token }) => {
+      const user = await getUserFromToken(token);
+      const listing = await BusinessListing.findById(id);
+      if (!listing) throw new Error("Listing not found");
+      if (String(listing.author) !== String(user._id)) throw new Error("Not authorized");
+      if (name) listing.name = name;
+      if (description) listing.description = description;
+      if (category) listing.category = category;
+      await listing.save();
+      return await BusinessListing.findById(id).populate("author");
+    },
+
+    deleteBusinessListing: async (_, { id }, { token }) => {
+      const user = await getUserFromToken(token);
+      const listing = await BusinessListing.findById(id);
+      if (!listing) throw new Error("Listing not found");
+      if (String(listing.author) !== String(user._id)) throw new Error("Not authorized");
+      await BusinessListing.findByIdAndDelete(id);
+      await Review.deleteMany({ business: id });
+      await Deal.deleteMany({ business: id });
+      return true;
+    },
+
+    deleteReview: async (_, { id }, { token }) => {
+      const user = await getUserFromToken(token);
+      const review = await Review.findById(id);
+      if (!review) throw new Error("Review not found");
+      if (String(review.author) !== String(user._id)) throw new Error("Not authorized");
+      await Review.findByIdAndDelete(id);
+      return true;
+    },
+
+    deleteDeal: async (_, { id }, { token }) => {
+      const user = await getUserFromToken(token);
+      const deal = await Deal.findById(id).populate("business");
+      if (!deal) throw new Error("Deal not found");
+      if (String(deal.business.author) !== String(user._id)) throw new Error("Not authorized");
+      await Deal.findByIdAndDelete(id);
+      return true;
+    },
+
+    deleteEvent: async (_, { id }, { token }) => {
+      const user = await getUserFromToken(token);
+      const event = await Event.findById(id);
+      if (!event) throw new Error("Event not found");
+      if (String(event.organizer) !== String(user._id)) throw new Error("Not authorized");
+      await Event.findByIdAndDelete(id);
+      return true;
+    },
+
+    addReviewReply: async (_, { reviewId, reply }, { token }) => {
+      const user = await getUserFromToken(token);
+      const review = await Review.findById(reviewId).populate("business");
+      if (!review) throw new Error("Review not found");
+      if (String(review.business.author) !== String(user._id)) throw new Error("Only the business owner can reply");
+      review.ownerReply = reply;
+      await review.save();
+      return await Review.findById(reviewId).populate("author").populate("business");
     },
   },
 };
