@@ -75,89 +75,145 @@ export default function CustomerReviews() {
     : null;
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <nav className="bg-yellow-500 text-white px-6 py-4 flex justify-between items-center shadow">
-        <h1 className="text-xl font-bold">🏘️ Neighborhood Hub</h1>
-        <button onClick={() => navigate("/dashboard")} className="bg-white text-yellow-600 text-sm font-semibold px-4 py-1 rounded-full hover:bg-gray-100">← Dashboard</button>
+    <div className="min-h-screen bg-gradient-to-br from-yellow-50 to-gray-100">
+      {/* Navigation */}
+      <nav className="bg-yellow-500 text-white px-6 py-5 shadow-lg">
+        <div className="max-w-7xl mx-auto flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">🏘️</span>
+            <span className="font-headline font-black text-xl tracking-tight">Neighbourhood Hub</span>
+          </div>
+          <button onClick={() => navigate("/dashboard")} className="bg-white/20 hover:bg-white/30 text-white font-semibold px-5 py-2 rounded-full transition-all">
+            ← Dashboard
+          </button>
+        </div>
       </nav>
-      <div className="max-w-3xl mx-auto mt-8 px-4">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">⭐ Customer Reviews</h2>
-        <div className="bg-white rounded-xl shadow p-4 mb-6 border border-gray-100">
-          <label className="block text-sm font-semibold text-gray-700 mb-2">Select a Business</label>
+
+      <main className="max-w-4xl mx-auto px-6 py-12">
+        {/* Header */}
+        <h1 className="font-headline text-4xl font-extrabold text-gray-900 mb-2">
+          ⭐ Customer Reviews & Feedback
+        </h1>
+        <p className="text-gray-600 mb-8">Read and manage reviews from your community customers</p>
+
+        {/* Business Selector */}
+        <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-yellow-200">
+          <label className="block text-lg font-bold text-gray-900 mb-4">📌 Select a Business</label>
           <select value={selectedBiz.id}
             onChange={(e) => {
               const biz = listingsData?.getBusinessListings?.find(b => b.id === e.target.value);
               setSelectedBiz({ id: e.target.value, name: biz?.name || "" });
               setSentiment("");
             }}
-            className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-400">
+            className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-5 py-3 focus:outline-none focus:border-yellow-500 focus:bg-white transition text-gray-700 font-semibold"
+          >
             <option value="">-- Choose a business --</option>
             {listingsData?.getBusinessListings?.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
         </div>
+
         {selectedBiz.id && (
-          <>
-            <div className="flex justify-between items-center mb-4">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-800">{selectedBiz.name}</h3>
-                {avgRating && <p className="text-sm text-gray-500">Average: ⭐ {avgRating} / 5 ({data?.getReviews?.length} reviews)</p>}
-              </div>
-              <div className="flex gap-2">
-                <button onClick={handleAnalyze} disabled={analyzing}
-                  className="text-xs bg-yellow-100 text-yellow-700 px-3 py-2 rounded-full hover:bg-yellow-200 transition disabled:opacity-50">
-                  {analyzing ? "Analyzing..." : "🤖 AI Sentiment Analysis"}
-                </button>
-                <button onClick={() => setShowForm(!showForm)} className="bg-yellow-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-yellow-600 transition text-sm">
-                  {showForm ? "Cancel" : "+ Write Review"}
-                </button>
+          <div className="space-y-8">
+            {/* Business Info & Rating */}
+            <div className="bg-white rounded-2xl shadow-lg p-8 border border-yellow-100">
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <h2 className="text-3xl font-headline font-bold text-gray-900">{selectedBiz.name}</h2>
+                  {avgRating && (
+                    <div className="mt-3 flex items-center gap-3">
+                      <div className="flex gap-1">
+                        {[1, 2, 3, 4, 5].map(n => (
+                          <span key={n} className={n <= Math.round(avgRating) ? "text-yellow-400 text-2xl" : "text-gray-300 text-2xl"}>★</span>
+                        ))}
+                      </div>
+                      <span className="text-xl font-bold text-gray-900">{avgRating} / 5</span>
+                      <span className="text-gray-500">({data?.getReviews?.length} reviews)</span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-3">
+                  <button onClick={handleAnalyze} disabled={analyzing}
+                    className="bg-yellow-100 hover:bg-yellow-200 disabled:opacity-50 text-yellow-700 font-bold px-4 py-3 rounded-full transition-all text-sm">
+                    {analyzing ? "🤖 Analyzing..." : "🤖 AI Sentiment Analysis"}
+                  </button>
+                  <button onClick={() => setShowForm(!showForm)} className="bg-yellow-500 hover:bg-yellow-600 text-white font-headline font-bold px-6 py-3 rounded-full shadow-lg transition-all">
+                    {showForm ? "Cancel" : "+ Write Review"}
+                  </button>
+                </div>
               </div>
             </div>
+
+            {/* AI Sentiment Analysis */}
             {sentiment && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
-                <p className="text-xs font-semibold text-yellow-700 mb-2">🤖 AI Sentiment Analysis</p>
-                <p className="text-sm text-gray-700 whitespace-pre-wrap">{sentiment}</p>
+              <div className="bg-yellow-50 border-2 border-yellow-200 rounded-2xl p-6">
+                <p className="text-sm font-bold text-yellow-700 mb-3">🤖 AI SENTIMENT ANALYSIS</p>
+                <p className="text-gray-800 leading-relaxed">{sentiment}</p>
               </div>
             )}
+
+            {/* Write Review Form */}
             {showForm && (
-              <div className="bg-white rounded-xl shadow p-6 mb-6 border border-yellow-100">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Write a Review</h3>
-                <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="bg-white rounded-2xl shadow-lg p-8 border border-yellow-200">
+                <h3 className="text-2xl font-headline font-bold text-gray-900 mb-6">Share Your Experience</h3>
+                <form onSubmit={handleSubmit} className="space-y-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Rating</label>
-                    <div className="flex gap-2">
+                    <label className="block text-sm font-semibold text-gray-700 mb-3">Your Rating</label>
+                    <div className="flex gap-3">
                       {[1, 2, 3, 4, 5].map((n) => (
                         <button type="button" key={n} onClick={() => setForm({ ...form, rating: n })}
-                          className={`w-10 h-10 rounded-full text-lg transition ${form.rating >= n ? "bg-yellow-400 text-white" : "bg-gray-100 text-gray-400"}`}>★</button>
+                          className={`w-14 h-14 rounded-full text-2xl transition-all ${form.rating >= n ? "bg-yellow-400 text-white shadow-lg scale-110" : "bg-gray-100 text-gray-400 hover:bg-gray-200"}`}>
+                          ★
+                        </button>
                       ))}
-                      <span className="self-center text-sm text-gray-500 ml-2">{form.rating}/5</span>
+                      <span className="self-center text-lg font-bold text-gray-700 ml-4">{form.rating}/5</span>
                     </div>
                   </div>
-                  <textarea placeholder="Share your experience..." value={form.content}
-                    onChange={(e) => setForm({ ...form, content: e.target.value })} rows={3}
-                    className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-400 resize-none" />
-                  <button type="submit" disabled={creating} className="bg-yellow-500 text-white px-6 py-2 rounded-lg font-semibold hover:bg-yellow-600 disabled:opacity-50 transition">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Your Review</label>
+                    <textarea placeholder="Share your experience with this business..." value={form.content}
+                      onChange={(e) => setForm({ ...form, content: e.target.value })} rows={4}
+                      className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-yellow-500 focus:bg-white transition resize-none"
+                    />
+                  </div>
+                  <button type="submit" disabled={creating} className="w-full bg-yellow-500 hover:bg-yellow-600 disabled:opacity-50 text-white font-bold py-3 rounded-full transition-all">
                     {creating ? "Submitting..." : "Submit Review"}
                   </button>
                 </form>
               </div>
             )}
-            {loading && <p className="text-center text-gray-500 mt-6">Loading reviews...</p>}
+
+            {/* Reviews List */}
+            {loading && (
+              <div className="text-center py-12">
+                <p className="text-gray-500 text-lg">Loading reviews...</p>
+              </div>
+            )}
             <div className="space-y-4">
               {data?.getReviews?.map((review) => (
-                <div key={review.id} className="bg-white rounded-xl shadow p-5 border border-gray-100">
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex gap-1">{[1, 2, 3, 4, 5].map(n => <span key={n} className={n <= review.rating ? "text-yellow-400" : "text-gray-200"}>★</span>)}</div>
-                    <span className="text-xs text-gray-400">{new Date(parseInt(review.createdAt)).toLocaleDateString()}</span>
+                <div key={review.id} className="bg-white rounded-2xl shadow p-6 border border-gray-200 hover:shadow-lg transition-all">
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex gap-1">
+                      {[1, 2, 3, 4, 5].map(n => (
+                        <span key={n} className={n <= review.rating ? "text-yellow-400 text-xl" : "text-gray-300 text-xl"}>★</span>
+                      ))}
+                    </div>
+                    <span className="text-xs text-gray-400 font-semibold">{new Date(parseInt(review.createdAt)).toLocaleDateString()}</span>
                   </div>
-                  <p className="text-gray-700 text-sm mb-2">{review.content}</p>
-                  <span className="text-xs text-gray-400">by {review.author?.name}</span>
+                  <p className="text-gray-800 mb-3 leading-relaxed">{review.content}</p>
+                  <p className="text-sm text-gray-500">by <span className="font-bold text-gray-700">{review.author?.name}</span></p>
                 </div>
               ))}
-              {data?.getReviews?.length === 0 && <p className="text-center text-gray-400 py-8">No reviews yet. Be the first!</p>}
+              {data?.getReviews?.length === 0 && (
+                <div className="text-center py-16 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
+                  <p className="text-5xl mb-3">📝</p>
+                  <p className="text-gray-500 font-semibold">No reviews yet</p>
+                  <p className="text-gray-400">Be the first to share your experience!</p>
+                </div>
+              )}
             </div>
-          </>
+          </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }

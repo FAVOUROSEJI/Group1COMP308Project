@@ -2,7 +2,8 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 
-// Auth
+// Public
+import HomePage from "./pages/public/HomePage";
 import AuthPage from "./pages/auth/AuthPage";
 
 // Dashboard
@@ -28,7 +29,8 @@ export default function App() {
     <AuthProvider>
       <Routes>
         {/* Public */}
-        <Route path="/" element={<AuthPage />} />
+        <Route path="/" element={<HomePage />} />
+        <Route path="/auth" element={<AuthPage />} />
 
         {/* Protected */}
         <Route path="/dashboard" element={
