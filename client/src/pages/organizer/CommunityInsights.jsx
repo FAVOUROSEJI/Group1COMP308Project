@@ -9,13 +9,13 @@ const GET_LISTINGS = gql`query { getBusinessListings { id name category } }`;
 
 function StatCard({ icon, label, value, color }) {
   return (
-    <div className={`bg-white rounded-xl shadow p-5 border-l-4 ${color}`}>
+    <div className={`bg-white rounded-2xl shadow-lg p-6 border-l-4 ${color}`}>
       <div className="flex justify-between items-center">
         <div>
-          <p className="text-sm text-gray-500">{label}</p>
-          <p className="text-3xl font-bold text-gray-800 mt-1">{value}</p>
+          <p className="text-sm font-semibold text-gray-600">{label}</p>
+          <p className="text-4xl font-bold text-gray-900 mt-2">{value}</p>
         </div>
-        <span className="text-3xl">{icon}</span>
+        <span className="text-4xl">{icon}</span>
       </div>
     </div>
   );
@@ -49,16 +49,29 @@ export default function CommunityInsights() {
   const topContributors = Object.entries(authorCount).sort((a, b) => b[1] - a[1]).slice(0, 5);
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <nav className="bg-orange-500 text-white px-6 py-4 flex justify-between items-center shadow">
-        <h1 className="text-xl font-bold">🏘️ Neighborhood Hub</h1>
-        <button onClick={() => navigate("/dashboard")} className="bg-white text-orange-600 text-sm font-semibold px-4 py-1 rounded-full hover:bg-gray-100">← Dashboard</button>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100">
+      {/* Navigation */}
+      <nav className="bg-slate-700 text-white px-6 py-5 shadow-lg">
+        <div className="max-w-7xl mx-auto flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">🏘️</span>
+            <span className="font-headline font-black text-xl tracking-tight">Neighbourhood Hub</span>
+          </div>
+          <button onClick={() => navigate("/dashboard")} className="bg-white/20 hover:bg-white/30 text-white font-semibold px-5 py-2 rounded-full transition-all">
+            ← Dashboard
+          </button>
+        </div>
       </nav>
-      <div className="max-w-5xl mx-auto mt-8 px-4">
-        <h2 className="text-2xl font-bold text-gray-800 mb-2">📊 Community Insights</h2>
-        <p className="text-gray-500 text-sm mb-6">Overview of community engagement and activity.</p>
 
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+      <main className="max-w-7xl mx-auto px-6 py-12">
+        {/* Header */}
+        <h1 className="font-headline text-4xl font-extrabold text-gray-900 mb-2">
+          📊 Community Insights
+        </h1>
+        <p className="text-gray-600 mb-8">Overview of community engagement and activity metrics</p>
+
+        {/* Key Metrics Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-12">
           <StatCard icon="📰" label="Total Posts" value={posts.length} color="border-blue-400" />
           <StatCard icon="🤝" label="Help Requests" value={helpRequests.length} color="border-green-400" />
           <StatCard icon="🚨" label="Alerts" value={alerts.length} color="border-red-400" />
@@ -66,34 +79,46 @@ export default function CommunityInsights() {
           <StatCard icon="🏪" label="Businesses" value={listings.length} color="border-purple-400" />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <div className="bg-white rounded-xl shadow p-5 border border-gray-100">
-            <h3 className="font-semibold text-gray-700 mb-4">📈 Activity This Week</h3>
-            <div className="space-y-3">
-              {[["📰 New Posts", recentPosts.length, "text-blue-600"],
-              ["🤝 New Help Requests", recentHelp.length, "text-green-600"],
-              ["📅 Upcoming Events", upcomingEvents.length, "text-orange-600"],
-              ["🚨 Active Alerts", alerts.length, "text-red-600"]
-              ].map(([label, val, color]) => (
-                <div key={label} className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">{label}</span>
-                  <span className={`font-bold ${color}`}>{val}</span>
-                </div>
-              ))}
+        {/* Two-Column Analytics */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          {/* Activity This Week */}
+          <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
+            <h2 className="text-2xl font-headline font-bold text-gray-900 mb-6">📈 Activity This Week</h2>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center pb-4 border-b border-gray-200">
+                <span className="text-gray-700 font-semibold">📰 New Posts</span>
+                <span className="text-2xl font-bold text-blue-600">{recentPosts.length}</span>
+              </div>
+              <div className="flex justify-between items-center pb-4 border-b border-gray-200">
+                <span className="text-gray-700 font-semibold">🤝 Help Requests</span>
+                <span className="text-2xl font-bold text-green-600">{recentHelp.length}</span>
+              </div>
+              <div className="flex justify-between items-center pb-4 border-b border-gray-200">
+                <span className="text-gray-700 font-semibold">📅 Upcoming Events</span>
+                <span className="text-2xl font-bold text-orange-600">{upcomingEvents.length}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-700 font-semibold">🚨 Active Alerts</span>
+                <span className="text-2xl font-bold text-red-600">{alerts.length}</span>
+              </div>
             </div>
           </div>
-          <div className="bg-white rounded-xl shadow p-5 border border-gray-100">
-            <h3 className="font-semibold text-gray-700 mb-4">🏪 Business Categories</h3>
-            {Object.keys(categoryCount).length === 0 ? <p className="text-gray-400 text-sm">No businesses listed yet.</p> : (
-              <div className="space-y-2">
+
+          {/* Business Categories */}
+          <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
+            <h2 className="text-2xl font-headline font-bold text-gray-900 mb-6">🏪 Business Categories</h2>
+            {Object.keys(categoryCount).length === 0 ? (
+              <p className="text-gray-400">No businesses listed yet</p>
+            ) : (
+              <div className="space-y-4">
                 {Object.entries(categoryCount).map(([cat, count]) => (
-                  <div key={cat} className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600 capitalize">{cat}</span>
-                    <div className="flex items-center gap-2">
-                      <div className="h-2 rounded-full bg-purple-200" style={{ width: `${(count / listings.length) * 80}px` }}>
-                        <div className="h-2 bg-purple-500 rounded-full w-full" />
+                  <div key={cat} className="flex items-center justify-between">
+                    <span className="text-gray-700 font-semibold capitalize">{cat}</span>
+                    <div className="flex items-center gap-3">
+                      <div className="h-2 bg-purple-200 rounded-full" style={{ width: "100px" }}>
+                        <div className="h-2 bg-purple-500 rounded-full" style={{ width: `${(count / listings.length) * 100}%` }} />
                       </div>
-                      <span className="text-sm font-semibold text-purple-700">{count}</span>
+                      <span className="font-bold text-purple-700 min-w-fit">{count}</span>
                     </div>
                   </div>
                 ))}
@@ -102,38 +127,55 @@ export default function CommunityInsights() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white rounded-xl shadow p-5 border border-gray-100">
-            <h3 className="font-semibold text-gray-700 mb-4">🏆 Top Contributors</h3>
-            {topContributors.length === 0 ? <p className="text-gray-400 text-sm">No posts yet.</p> : (
-              <div className="space-y-2">
+        {/* Bottom Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Top Contributors */}
+          <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
+            <h2 className="text-2xl font-headline font-bold text-gray-900 mb-6">🏆 Top Contributors</h2>
+            {topContributors.length === 0 ? (
+              <p className="text-gray-400">No posts yet</p>
+            ) : (
+              <div className="space-y-3">
                 {topContributors.map(([name, count], i) => (
-                  <div key={name} className="flex justify-between items-center">
-                    <span className="text-sm text-gray-700">{["🥇", "🥈", "🥉"][i] || `${i + 1}.`} {name}</span>
-                    <span className="text-sm font-semibold text-blue-600">{count} post{count !== 1 ? "s" : ""}</span>
+                  <div key={name} className="flex items-center justify-between pb-3 border-b border-gray-200 last:border-0">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">
+                        {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : "✨"}
+                      </span>
+                      <span className="font-semibold text-gray-900">{name}</span>
+                    </div>
+                    <span className="text-lg font-bold text-blue-600">{count}</span>
                   </div>
                 ))}
               </div>
             )}
           </div>
-          <div className="bg-white rounded-xl shadow p-5 border border-gray-100">
-            <h3 className="font-semibold text-gray-700 mb-4">📅 Upcoming Events</h3>
-            {upcomingEvents.length === 0 ? <p className="text-gray-400 text-sm">No upcoming events.</p> : (
-              <div className="space-y-2">
-                {upcomingEvents.slice(0, 4).map(event => (
-                  <div key={event.id} className="flex justify-between items-center border-b pb-2 last:border-0">
-                    <div>
-                      <p className="text-sm font-medium text-gray-800">{event.title}</p>
-                      <p className="text-xs text-gray-400">{event.location}</p>
+
+          {/* Upcoming Events */}
+          <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
+            <h2 className="text-2xl font-headline font-bold text-gray-900 mb-6">📅 Upcoming Events</h2>
+            {upcomingEvents.length === 0 ? (
+              <p className="text-gray-400">No upcoming events</p>
+            ) : (
+              <div className="space-y-3">
+                {upcomingEvents.slice(0, 5).map(event => (
+                  <div key={event.id} className="pb-3 border-b border-gray-200 last:border-0">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="font-bold text-gray-900">{event.title}</p>
+                        <p className="text-sm text-gray-500 mt-1">📍 {event.location}</p>
+                      </div>
+                      <span className="text-xs font-bold text-orange-600 bg-orange-100 px-3 py-1 rounded-full whitespace-nowrap ml-2">
+                        {new Date(event.date).toLocaleDateString()}
+                      </span>
                     </div>
-                    <span className="text-xs text-orange-600 font-semibold">{new Date(event.date).toLocaleDateString()}</span>
                   </div>
                 ))}
               </div>
             )}
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
