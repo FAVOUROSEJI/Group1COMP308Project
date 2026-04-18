@@ -49,63 +49,101 @@ export default function PostDeal() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <nav className="bg-purple-600 text-white px-6 py-4 flex justify-between items-center shadow">
-        <h1 className="text-xl font-bold">🏘️ Neighborhood Hub</h1>
-        <button onClick={() => navigate("/dashboard")} className="bg-white text-purple-600 text-sm font-semibold px-4 py-1 rounded-full hover:bg-gray-100">← Dashboard</button>
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-gray-100">
+      {/* Navigation */}
+      <nav className="bg-purple-600 text-white px-6 py-5 shadow-lg">
+        <div className="max-w-7xl mx-auto flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">🏘️</span>
+            <span className="font-headline font-black text-xl tracking-tight">Neighbourhood Hub</span>
+          </div>
+          <button onClick={() => navigate("/dashboard")} className="bg-white/20 hover:bg-white/30 text-white font-semibold px-5 py-2 rounded-full transition-all">
+            ← Dashboard
+          </button>
+        </div>
       </nav>
-      <div className="max-w-3xl mx-auto mt-8 px-4">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">📢 Post a Deal</h2>
+
+      <main className="max-w-4xl mx-auto px-6 py-12">
+        {/* Header */}
+        <h1 className="font-headline text-4xl font-extrabold text-gray-900 mb-2">
+          📢 Post Special Deals
+        </h1>
+        <p className="text-gray-600 mb-8">Share exclusive offers with your community members</p>
+
         {myListings.length === 0 ? (
-          <div className="bg-white rounded-xl shadow p-8 text-center border border-gray-100">
-            <p className="text-4xl mb-3">🏪</p>
-            <p className="text-gray-600 font-semibold mb-2">No Business Listing Found</p>
-            <p className="text-gray-400 text-sm mb-4">You need to create a business listing before posting deals.</p>
-            <button onClick={() => navigate("/business-listings")} className="bg-purple-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-purple-700 transition">Create a Listing</button>
+          <div className="bg-white rounded-2xl shadow-lg p-12 text-center border border-gray-200">
+            <p className="text-6xl mb-4">🏪</p>
+            <p className="text-2xl font-bold text-gray-900 mb-2">No Business Listing</p>
+            <p className="text-gray-600 mb-6 text-lg">You need to create a business listing before posting deals.</p>
+            <button onClick={() => navigate("/business-listings")} className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-8 py-3 rounded-full shadow-lg transition-all">
+              Create Business Listing
+            </button>
           </div>
         ) : (
-          <>
-            <div className="bg-white rounded-xl shadow p-4 mb-6 border border-gray-100">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Select Your Business</label>
+          <div className="space-y-8">
+            {/* Business Selector */}
+            <div className="bg-white rounded-2xl shadow-lg p-8 border border-purple-200">
+              <label className="block text-lg font-bold text-gray-900 mb-4">📌 Select Your Business</label>
               <select value={selectedBizId} onChange={(e) => setSelectedBizId(e.target.value)}
-                className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400">
+                className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-5 py-3 focus:outline-none focus:border-purple-500 focus:bg-white transition text-gray-700 font-semibold"
+              >
                 <option value="">-- Choose your business --</option>
                 {myListings.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
               </select>
             </div>
+
+            {/* Deals Section */}
             {selectedBizId && (
-              <>
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold text-gray-700">Active Deals</h3>
-                  <button onClick={() => setShowForm(!showForm)} className="bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-purple-700 transition text-sm">
+              <div>
+                {/* Header */}
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-headline font-bold text-gray-900">Active Deals</h2>
+                  <button onClick={() => setShowForm(!showForm)} className="bg-purple-600 hover:bg-purple-700 text-white font-headline font-bold px-6 py-3 rounded-full shadow-lg transition-all">
                     {showForm ? "Cancel" : "+ New Deal"}
                   </button>
                 </div>
+
+                {/* Create Deal Form */}
                 {showForm && (
-                  <div className="bg-white rounded-xl shadow p-6 mb-6 border border-purple-100">
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                      <input placeholder="Deal title (e.g. 20% off this weekend!)" value={form.title}
-                        onChange={(e) => setForm({ ...form, title: e.target.value })}
-                        className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400" />
-                      <textarea placeholder="Describe the deal, terms, and expiry..." value={form.description}
-                        onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3}
-                        className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400 resize-none" />
-                      <button type="submit" disabled={creating} className="bg-purple-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-purple-700 disabled:opacity-50 transition">
+                  <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-purple-200">
+                    <h3 className="text-2xl font-headline font-bold text-gray-900 mb-6">Create a Special Deal</h3>
+                    <form onSubmit={handleSubmit} className="space-y-5">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Deal Title</label>
+                        <input placeholder="e.g., 20% Off This Weekend!" value={form.title}
+                          onChange={(e) => setForm({ ...form, title: e.target.value })}
+                          className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-purple-500 focus:bg-white transition"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Deal Details</label>
+                        <textarea placeholder="Describe the deal, terms, expiry date, and how to redeem..." value={form.description}
+                          onChange={(e) => setForm({ ...form, description: e.target.value })} rows={4}
+                          className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-purple-500 focus:bg-white transition resize-none"
+                        />
+                      </div>
+                      <button type="submit" disabled={creating} className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-bold py-3 rounded-full transition-all">
                         {creating ? "Posting..." : "Post Deal"}
                       </button>
                     </form>
                   </div>
                 )}
-                {dealsLoading && <p className="text-center text-gray-500">Loading deals...</p>}
+
+                {/* Deals List */}
+                {dealsLoading && (
+                  <div className="text-center py-12">
+                    <p className="text-gray-500 text-lg">Loading deals...</p>
+                  </div>
+                )}
                 <div className="space-y-4">
                   {dealsData?.getDeals?.map((deal) => (
-                    <div key={deal.id} className="bg-white rounded-xl shadow p-5 border-l-4 border-purple-400">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-start gap-3">
-                          <span className="text-2xl">🏷️</span>
-                          <div>
-                            <h3 className="text-base font-semibold text-gray-800">{deal.title}</h3>
-                            <p className="text-gray-600 text-sm mt-1">{deal.description}</p>
+                    <div key={deal.id} className="bg-white rounded-2xl shadow p-6 border-l-4 border-purple-400 hover:shadow-lg transition-all">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-4 flex-1">
+                          <span className="text-4xl">🏷️</span>
+                          <div className="flex-1">
+                            <h3 className="text-xl font-bold text-gray-900">{deal.title}</h3>
+                            <p className="text-gray-700 mt-2 leading-relaxed">{deal.description}</p>
                           </div>
                         </div>
                         <button
@@ -116,13 +154,19 @@ export default function PostDeal() {
                       </div>
                     </div>
                   ))}
-                  {dealsData?.getDeals?.length === 0 && <p className="text-center text-gray-400 py-8">No active deals. Post your first one!</p>}
+                  {dealsData?.getDeals?.length === 0 && (
+                    <div className="text-center py-12 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
+                      <p className="text-5xl mb-3">🤷</p>
+                      <p className="text-gray-500 font-semibold">No active deals</p>
+                      <p className="text-gray-400">Post your first special offer to attract customers!</p>
+                    </div>
+                  )}
                 </div>
-              </>
+              </div>
             )}
-          </>
+          </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }

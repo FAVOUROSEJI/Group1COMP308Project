@@ -3,15 +3,16 @@ import { AuthProvider } from "./context/AuthContext";
 import { useAuth } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 
+// Public
+import HomePage from "./pages/public/HomePage";
+import AuthPage from "./pages/auth/AuthPage";
+
 function RoleRoute({ children, roles }) {
   const { user } = useAuth();
-  if (!user) return <Navigate to="/" replace />;
+  if (!user) return <Navigate to="/auth" replace />;
   if (!roles.includes(user.role)) return <Navigate to="/dashboard" replace />;
   return children;
 }
-
-// Auth
-import AuthPage from "./pages/auth/AuthPage";
 
 // Dashboard
 import Dashboard from "./pages/auth/Dashboard";
@@ -36,7 +37,8 @@ export default function App() {
     <AuthProvider>
       <Routes>
         {/* Public */}
-        <Route path="/" element={<AuthPage />} />
+        <Route path="/" element={<HomePage />} />
+        <Route path="/auth" element={<AuthPage />} />
 
         {/* Protected */}
         <Route path="/dashboard" element={

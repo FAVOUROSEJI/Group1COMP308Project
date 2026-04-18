@@ -105,131 +105,179 @@ export default function EventsPage() {
   const upcoming = data?.getEvents?.filter(e => new Date(e.date) >= new Date()) || [];
   const past = data?.getEvents?.filter(e => new Date(e.date) < new Date()) || [];
 
-  const renderEventCard = (event, isPast = false) => (
-    <div key={event.id} className={`bg-white rounded-xl shadow p-5 border border-gray-100 ${isPast ? "opacity-70" : ""}`}>
-      <div className="flex justify-between items-start mb-2">
-        <h3 className="text-base font-semibold text-gray-800">{event.title}</h3>
-        {!isPast && <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full">Upcoming</span>}
-      </div>
-      <p className="text-gray-600 text-sm mb-3">{event.description}</p>
-      <div className="flex justify-between text-xs text-gray-500 mb-3">
-        <span>🗓️ {new Date(event.date).toLocaleString()}</span>
-        <span>📍 {event.location}</span>
-      </div>
-
-      {event.volunteers?.length > 0 && (
-        <div className="bg-orange-50 border border-orange-100 rounded-lg px-3 py-2 mb-3">
-          <p className="text-xs text-orange-600 font-semibold mb-1">🙋 Volunteers ({event.volunteers.length})</p>
-          <p className="text-xs text-orange-800">{event.volunteers.map((v) => v.name).join(", ")}</p>
-        </div>
-      )}
-
-      {timings[event.id] && (
-        <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-2">
-          <p className="text-xs font-semibold text-orange-600 mb-1">🤖 AI Timing Analysis</p>
-          <p className="text-xs text-orange-800 whitespace-pre-wrap">{timings[event.id]}</p>
-        </div>
-      )}
-
-      <div className="flex flex-wrap justify-between items-center gap-2">
-        <span className="text-xs text-gray-400">by {event.organizer?.name}</span>
-        <div className="flex flex-wrap gap-2">
-          {!isPast && !isOrganizer(event) && (
-            <button
-              onClick={() => joinEvent({ variables: { eventId: event.id } })}
-              disabled={hasJoined(event)}
-              className="text-xs bg-orange-600 text-white px-3 py-1 rounded-full hover:bg-orange-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
-              {hasJoined(event) ? "✅ Joined" : "🙋 Join Event"}
-            </button>
-          )}
-          {!isPast && (
-            <button onClick={() => handlePredict(event)} disabled={predicting[event.id]}
-              className="text-xs bg-orange-100 text-orange-700 px-3 py-1 rounded-full hover:bg-orange-200 transition disabled:opacity-50">
-              {predicting[event.id] ? "Analyzing..." : "🤖 Predict Timing"}
-            </button>
-          )}
-          {isOrganizer(event) && (
-            <button
-              onClick={() => { if (window.confirm("Delete this event?")) deleteEvent({ variables: { id: event.id } }); }}
-              className="text-xs bg-red-100 text-red-600 px-3 py-1 rounded-full hover:bg-red-200 transition">
-              🗑️ Delete
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-
   return (
-    <div className="min-h-screen bg-gray-100">
-      <nav className="bg-orange-500 text-white px-6 py-4 flex justify-between items-center shadow">
-        <h1 className="text-xl font-bold">🏘️ Neighborhood Hub</h1>
-        <button onClick={() => navigate("/dashboard")} className="bg-white text-orange-600 text-sm font-semibold px-4 py-1 rounded-full hover:bg-gray-100">← Dashboard</button>
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-gray-100">
+      {/* Navigation */}
+      <nav className="bg-orange-600 text-white px-6 py-5 shadow-lg">
+        <div className="max-w-7xl mx-auto flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">🏘️</span>
+            <span className="font-headline font-black text-xl tracking-tight">Neighbourhood Hub</span>
+          </div>
+          <button onClick={() => navigate("/dashboard")} className="bg-white/20 hover:bg-white/30 text-white font-semibold px-5 py-2 rounded-full transition-all">
+            ← Dashboard
+          </button>
+        </div>
       </nav>
-      <div className="max-w-3xl mx-auto mt-8 px-4">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-800">📅 Community Events</h2>
-          <button onClick={() => setShowForm(!showForm)} className="bg-orange-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-orange-600 transition text-sm">
+
+      <main className="max-w-6xl mx-auto px-6 py-12">
+        {/* Header */}
+        <div className="flex justify-between items-start mb-8">
+          <div>
+            <h1 className="font-headline text-4xl font-extrabold text-gray-900 mb-2">
+              📅 Community Events
+            </h1>
+            <p className="text-gray-600">Create and manage community events that bring neighbors together</p>
+          </div>
+          <button onClick={() => setShowForm(!showForm)} className="bg-orange-600 hover:bg-orange-700 text-white font-headline font-bold px-6 py-3 rounded-full shadow-lg transition-all">
             {showForm ? "Cancel" : "+ Create Event"}
           </button>
         </div>
 
-        {/* AI Timing Helper */}
-        <div className="bg-orange-50 border border-orange-200 rounded-xl p-5 mb-6">
-          <p className="text-sm font-semibold text-orange-700 mb-3">🤖 AI Event Timing Predictor</p>
-          <div className="space-y-2">
+        {/* AI Timing Predictor */}
+        <div className="bg-orange-50 border-2 border-orange-200 rounded-2xl p-6 mb-8">
+          <p className="text-sm font-bold text-orange-700 mb-4">🤖 AI EVENT TIMING PREDICTOR</p>
+          <div className="space-y-3">
             <input placeholder="Event title" value={aiForm.title} onChange={(e) => setAiForm({ ...aiForm, title: e.target.value })}
-              className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+              className="w-full bg-white border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-orange-500 focus:bg-white transition"
+            />
             <input placeholder="Brief description (optional)" value={aiForm.description} onChange={(e) => setAiForm({ ...aiForm, description: e.target.value })}
-              className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
-            <button onClick={handleAiSuggest} disabled={aiLoading} className="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-orange-600 disabled:opacity-50 transition">
+              className="w-full bg-white border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-orange-500 focus:bg-white transition"
+            />
+            <button onClick={handleAiSuggest} disabled={aiLoading} className="w-full bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white font-bold py-2 rounded-full transition-all">
               {aiLoading ? "Predicting..." : "Get Best Timing Suggestion"}
             </button>
           </div>
-          {aiSuggestion && <p className="text-sm text-orange-900 mt-3 bg-orange-100 rounded-lg p-3 whitespace-pre-wrap">{aiSuggestion}</p>}
+          {aiSuggestion && <p className="text-sm text-orange-900 mt-4 bg-orange-100 rounded-lg p-4">{aiSuggestion}</p>}
         </div>
 
         {/* Create Event Form */}
         {showForm && (
-          <div className="bg-white rounded-xl shadow p-6 mb-6 border border-orange-100">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Create an Event</h3>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <input placeholder="Event title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
-                className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400" />
-              <textarea placeholder="Describe the event..." value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3}
-                className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none" />
-              <input type="datetime-local" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })}
-                className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400" />
-              <input placeholder="Location / venue" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })}
-                className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400" />
-              <button type="submit" disabled={creating} className="bg-orange-500 text-white px-6 py-2 rounded-lg font-semibold hover:bg-orange-600 disabled:opacity-50 transition">
+          <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-orange-200">
+            <h2 className="text-2xl font-headline font-bold text-gray-900 mb-6">Create Community Event</h2>
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Event Title</label>
+                <input placeholder="Event name" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
+                  className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-orange-500 focus:bg-white transition"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Description</label>
+                <textarea placeholder="What is this event about?" value={form.description}
+                  onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3}
+                  className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-orange-500 focus:bg-white transition resize-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Date & Time</label>
+                <input type="datetime-local" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })}
+                  className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-orange-500 focus:bg-white transition"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Location / Venue</label>
+                <input placeholder="Where will this happen?" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })}
+                  className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-orange-500 focus:bg-white transition"
+                />
+              </div>
+              <button type="submit" disabled={creating} className="w-full bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white font-bold py-3 rounded-full transition-all">
                 {creating ? "Creating..." : "Create Event"}
               </button>
             </form>
           </div>
         )}
 
-        {loading && <p className="text-center text-gray-500 mt-10">Loading events...</p>}
+        {loading && <div className="text-center py-12"><p className="text-gray-500 text-lg">Loading events...</p></div>}
 
         {upcoming.length > 0 && (
-          <>
-            <h3 className="text-lg font-semibold text-gray-700 mb-3">📅 Upcoming</h3>
-            <div className="space-y-4 mb-8">{upcoming.map((e) => renderEventCard(e, false))}</div>
-          </>
+          <div className="mb-12">
+            <h2 className="text-2xl font-headline font-bold text-gray-900 mb-6">📅 Upcoming Events</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {upcoming.map((event) => (
+                <div key={event.id} className="bg-white rounded-2xl shadow-lg p-6 border border-orange-200 hover:shadow-xl transition-all">
+                  <div className="flex items-start justify-between mb-3">
+                    <h3 className="text-lg font-bold text-gray-900">{event.title}</h3>
+                    <span className="bg-orange-100 text-orange-700 text-xs font-bold px-3 py-1 rounded-full">Upcoming</span>
+                  </div>
+                  <p className="text-gray-700 text-sm mb-4">{event.description}</p>
+                  <div className="space-y-2 mb-4 text-sm text-gray-600">
+                    <p>🗓️ {new Date(event.date).toLocaleString()}</p>
+                    <p>📍 {event.location}</p>
+                    <p className="text-xs text-gray-500">by {event.organizer?.name}</p>
+                  </div>
+
+                  {event.volunteers?.length > 0 && (
+                    <div className="bg-orange-50 border border-orange-100 rounded-lg px-3 py-2 mb-4">
+                      <p className="text-xs text-orange-600 font-semibold mb-1">🙋 Volunteers ({event.volunteers.length})</p>
+                      <p className="text-xs text-orange-800">{event.volunteers.map((v) => v.name).join(", ")}</p>
+                    </div>
+                  )}
+
+                  {timings[event.id] && (
+                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
+                      <p className="text-xs font-bold text-orange-700 mb-2">🤖 AI TIMING ANALYSIS</p>
+                      <p className="text-sm text-orange-900 leading-relaxed">{timings[event.id]}</p>
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap gap-2">
+                    {!isOrganizer(event) && (
+                      <button
+                        onClick={() => joinEvent({ variables: { eventId: event.id } })}
+                        disabled={hasJoined(event)}
+                        className="flex-1 bg-orange-600 text-white font-bold px-4 py-2 rounded-full hover:bg-orange-700 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm">
+                        {hasJoined(event) ? "✅ Joined" : "🙋 Join Event"}
+                      </button>
+                    )}
+                    <button onClick={() => handlePredict(event)} disabled={predicting[event.id]}
+                      className="flex-1 bg-orange-100 hover:bg-orange-200 disabled:opacity-50 text-orange-700 font-bold px-4 py-2 rounded-full transition-all text-sm">
+                      {predicting[event.id] ? "🤖 Analyzing..." : "🤖 Get Timing Analysis"}
+                    </button>
+                    {isOrganizer(event) && (
+                      <button
+                        onClick={() => { if (window.confirm("Delete this event?")) deleteEvent({ variables: { id: event.id } }); }}
+                        className="text-xs bg-red-100 text-red-600 px-3 py-2 rounded-full hover:bg-red-200 transition font-bold">
+                        🗑️
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
 
         {past.length > 0 && (
-          <>
-            <h3 className="text-lg font-semibold text-gray-500 mb-3">Past Events</h3>
-            <div className="space-y-3">{past.map((e) => renderEventCard(e, true))}</div>
-          </>
+          <div className="mb-8">
+            <h2 className="text-2xl font-headline font-bold text-gray-500 mb-6">Past Events</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {past.map((event) => (
+                <div key={event.id} className="bg-gray-100 rounded-2xl p-6 border border-gray-300 opacity-60">
+                  <p className="font-bold text-gray-700">{event.title}</p>
+                  <p className="text-xs text-gray-600 mt-2">🗓️ {new Date(event.date).toLocaleDateString()} • 📍 {event.location}</p>
+                  <p className="text-xs text-gray-500 mt-1">by {event.organizer?.name}</p>
+                  {isOrganizer(event) && (
+                    <button
+                      onClick={() => { if (window.confirm("Delete this event?")) deleteEvent({ variables: { id: event.id } }); }}
+                      className="mt-2 text-xs bg-red-100 text-red-600 px-3 py-1 rounded-full hover:bg-red-200 transition">
+                      🗑️ Delete
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
         )}
 
         {data?.getEvents?.length === 0 && !loading && (
-          <p className="text-center text-gray-400 py-10">No events yet. Create the first one!</p>
+          <div className="bg-white rounded-2xl shadow-lg p-12 text-center border border-gray-200">
+            <p className="text-5xl mb-3">📅</p>
+            <p className="text-gray-500 font-semibold text-lg">No events yet</p>
+            <p className="text-gray-400 mt-2">Create the first community event to bring neighbors together</p>
+          </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }

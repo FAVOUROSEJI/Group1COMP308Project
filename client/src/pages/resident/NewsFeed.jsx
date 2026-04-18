@@ -56,61 +56,105 @@ export default function NewsFeed() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <nav className="bg-blue-600 text-white px-6 py-4 flex justify-between items-center shadow">
-        <h1 className="text-xl font-bold">🏘️ Neighborhood Hub</h1>
-        <button onClick={() => navigate("/dashboard")} className="bg-white text-blue-600 text-sm font-semibold px-4 py-1 rounded-full hover:bg-gray-100">← Dashboard</button>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-gray-100">
+      {/* Navigation */}
+      <nav className="bg-blue-600 text-white px-6 py-5 shadow-lg">
+        <div className="max-w-7xl mx-auto flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">🏘️</span>
+            <span className="font-headline font-black text-xl tracking-tight">Neighbourhood Hub</span>
+          </div>
+          <button onClick={() => navigate("/dashboard")} className="bg-white/20 hover:bg-white/30 text-white font-semibold px-5 py-2 rounded-full transition-all">
+            ← Dashboard
+          </button>
+        </div>
       </nav>
-      <div className="max-w-3xl mx-auto mt-8 px-4">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-800">📰 Local News & Discussions</h2>
-          <button onClick={() => setShowForm(!showForm)} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition text-sm">
+
+      <main className="max-w-4xl mx-auto px-6 py-12">
+        {/* Header */}
+        <div className="flex justify-between items-start mb-8">
+          <div>
+            <h1 className="font-headline text-4xl font-extrabold text-gray-900 mb-2">
+              📰 Local News & Discussions
+            </h1>
+            <p className="text-gray-600">Stay updated with what's happening in your neighborhood</p>
+          </div>
+          <button onClick={() => setShowForm(!showForm)} className="bg-blue-600 hover:bg-blue-700 text-white font-headline font-bold px-6 py-3 rounded-full shadow-lg transition-all">
             {showForm ? "Cancel" : "+ New Post"}
           </button>
         </div>
+
+        {/* Create Post Form */}
         {showForm && (
-          <div className="bg-white rounded-xl shadow p-6 mb-6 border border-blue-100">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Create a Post</h3>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <input name="title" placeholder="Post title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
-                className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400" />
-              <textarea name="content" placeholder="What's happening in your neighborhood?" value={form.content}
-                onChange={(e) => setForm({ ...form, content: e.target.value })} rows={4}
-                className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none" />
-              <button type="submit" disabled={creating} className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 transition">
-                {creating ? "Posting..." : "Post"}
+          <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-blue-200">
+            <h2 className="text-2xl font-headline font-bold text-gray-900 mb-6">Share with Your Community</h2>
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Post Title</label>
+                <input name="title" placeholder="What's on your mind?" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
+                  className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 focus:bg-white transition"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">What's happening?</label>
+                <textarea name="content" placeholder="Share your news, updates, or discussion..." value={form.content}
+                  onChange={(e) => setForm({ ...form, content: e.target.value })} rows={4}
+                  className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 focus:bg-white transition resize-none"
+                />
+              </div>
+              <button type="submit" disabled={creating} className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold py-3 rounded-full transition-all">
+                {creating ? "Posting..." : "Publish Post"}
               </button>
             </form>
           </div>
         )}
-        {loading && <p className="text-center text-gray-500 mt-10">Loading posts...</p>}
-        {error && <p className="text-center text-red-500 mt-10">Error loading posts.</p>}
-        <div className="space-y-4">
+
+        {/* Posts List */}
+        {loading && (
+          <div className="text-center py-12">
+            <p className="text-gray-500 text-lg">Loading posts...</p>
+          </div>
+        )}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+            <p className="text-red-700 font-semibold">Error loading posts</p>
+          </div>
+        )}
+        <div className="space-y-6">
           {data?.getPosts?.map((post) => (
-            <div key={post.id} className="bg-white rounded-xl shadow p-6 border border-gray-100">
-              <div className="flex justify-between items-start mb-2">
-                <h3 className="text-lg font-semibold text-gray-800">{post.title}</h3>
-                <span className="text-xs text-gray-400">{new Date(parseInt(post.createdAt)).toLocaleDateString()}</span>
+            <div key={post.id} className="bg-white rounded-2xl shadow p-6 border border-gray-200 hover:shadow-lg transition-all">
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">{post.title}</h3>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {new Date(parseInt(post.createdAt)).toLocaleDateString()} • by <span className="font-semibold text-gray-600">{post.author?.name}</span>
+                  </p>
+                </div>
               </div>
-              <p className="text-gray-600 text-sm mb-3 whitespace-pre-wrap">{post.content}</p>
+              <p className="text-gray-700 mb-4 leading-relaxed whitespace-pre-wrap">{post.content}</p>
               {summaries[post.id] && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
-                  <p className="text-xs font-semibold text-blue-600 mb-1">🤖 AI Summary</p>
-                  <p className="text-sm text-blue-800">{summaries[post.id]}</p>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                  <p className="text-xs font-bold text-blue-600 mb-2">🤖 AI SUMMARY</p>
+                  <p className="text-sm text-blue-900 leading-relaxed">{summaries[post.id]}</p>
                 </div>
               )}
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-gray-400">by <span className="font-medium text-gray-600">{post.author?.name}</span></span>
+              <div className="flex justify-end">
                 <button onClick={() => handleSummarize(post)} disabled={summarizing[post.id]}
-                  className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full hover:bg-blue-200 transition disabled:opacity-50">
-                  {summarizing[post.id] ? "Summarizing..." : "🤖 AI Summarize"}
+                  className="bg-blue-100 hover:bg-blue-200 disabled:opacity-50 text-blue-700 font-bold px-4 py-2 rounded-full transition-all text-sm">
+                  {summarizing[post.id] ? "🤖 Summarizing..." : "🤖 AI Summarize"}
                 </button>
               </div>
             </div>
           ))}
-          {data?.getPosts?.length === 0 && <p className="text-center text-gray-400 py-10">No posts yet. Be the first to post!</p>}
+          {data?.getPosts?.length === 0 && (
+            <div className="text-center py-16 bg-gray-50 rounded-2xl">
+              <p className="text-5xl mb-3">📝</p>
+              <p className="text-gray-500 font-semibold text-lg">No posts yet</p>
+              <p className="text-gray-400">Be the first to share what's happening in your neighborhood!</p>
+            </div>
+          )}
         </div>
-      </div>
+      </main>
     </div>
   );
 }
