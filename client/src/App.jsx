@@ -1,6 +1,14 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
+import { useAuth } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
+
+function RoleRoute({ children, roles }) {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/" replace />;
+  if (!roles.includes(user.role)) return <Navigate to="/dashboard" replace />;
+  return children;
+}
 
 // Auth
 import AuthPage from "./pages/auth/AuthPage";
@@ -54,7 +62,7 @@ export default function App() {
           <ProtectedRoute><CustomerReviews /></ProtectedRoute>
         } />
         <Route path="/post-deal" element={
-          <ProtectedRoute><PostDeal /></ProtectedRoute>
+          <RoleRoute roles={["business"]}><PostDeal /></RoleRoute>
         } />
 
         {/* Organizer */}
@@ -62,7 +70,7 @@ export default function App() {
           <ProtectedRoute><EventsPage /></ProtectedRoute>
         } />
         <Route path="/volunteer-matching" element={
-          <ProtectedRoute><VolunteerMatching /></ProtectedRoute>
+          <RoleRoute roles={["organizer"]}><VolunteerMatching /></RoleRoute>
         } />
         <Route path="/community-insights" element={
           <ProtectedRoute><CommunityInsights /></ProtectedRoute>

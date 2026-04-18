@@ -1,15 +1,34 @@
 import { useState } from "react";
 import { gql, useQuery, useMutation } from "@apollo/client";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 
 const GET_EVENTS = gql`
-  query { getEvents { id title description date location organizer { id name } } }
+  query {
+    getEvents {
+      id title description date location
+      organizer { id name }
+      volunteers { id name }
+    }
+  }
 `;
 const CREATE_EVENT = gql`
   mutation CreateEvent($title: String!, $description: String!, $date: String!, $location: String!) {
     createEvent(title: $title, description: $description, date: $date, location: $location) {
-      id title description date location organizer { id name }
+      id title description date location organizer { id name } volunteers { id name }
     }
+  }
+`;
+const JOIN_EVENT = gql`
+  mutation JoinEvent($eventId: ID!) {
+    joinEvent(eventId: $eventId) {
+      id volunteers { id name }
+    }
+  }
+`;
+const DELETE_EVENT = gql`
+  mutation DeleteEvent($id: ID!) {
+    deleteEvent(id: $id)
   }
 `;
 
@@ -36,11 +55,21 @@ async function predictBestTiming(title, description) {
 
 export default function EventsPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { data, loading, refetch } = useQuery(GET_EVENTS);
   const [createEvent, { loading: creating }] = useMutation(CREATE_EVENT, {
     onCompleted: () => { refetch(); setForm({ title: "", description: "", date: "", location: "" }); setShowForm(false); },
     onError: (e) => alert(e.message),
   });
+  const [joinEvent] = useMutation(JOIN_EVENT, {
+    onCompleted: () => refetch(),
+    onError: (e) => alert(e.message),
+  });
+  const [deleteEvent] = useMutation(DELETE_EVENT, {
+    onCompleted: () => refetch(),
+    onError: (e) => alert(e.message),
+  });
+
   const [form, setForm] = useState({ title: "", description: "", date: "", location: "" });
   const [showForm, setShowForm] = useState(false);
   const [timings, setTimings] = useState({});
@@ -70,8 +99,66 @@ export default function EventsPage() {
     setAiLoading(false);
   };
 
+  const hasJoined = (event) => event.volunteers?.some((v) => v.id === user?.id);
+  const isOrganizer = (event) => event.organizer?.id === user?.id;
+
   const upcoming = data?.getEvents?.filter(e => new Date(e.date) >= new Date()) || [];
   const past = data?.getEvents?.filter(e => new Date(e.date) < new Date()) || [];
+
+  const renderEventCard = (event, isPast = false) => (
+    <div key={event.id} className={`bg-white rounded-xl shadow p-5 border border-gray-100 ${isPast ? "opacity-70" : ""}`}>
+      <div className="flex justify-between items-start mb-2">
+        <h3 className="text-base font-semibold text-gray-800">{event.title}</h3>
+        {!isPast && <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full">Upcoming</span>}
+      </div>
+      <p className="text-gray-600 text-sm mb-3">{event.description}</p>
+      <div className="flex justify-between text-xs text-gray-500 mb-3">
+        <span>🗓️ {new Date(event.date).toLocaleString()}</span>
+        <span>📍 {event.location}</span>
+      </div>
+
+      {event.volunteers?.length > 0 && (
+        <div className="bg-orange-50 border border-orange-100 rounded-lg px-3 py-2 mb-3">
+          <p className="text-xs text-orange-600 font-semibold mb-1">🙋 Volunteers ({event.volunteers.length})</p>
+          <p className="text-xs text-orange-800">{event.volunteers.map((v) => v.name).join(", ")}</p>
+        </div>
+      )}
+
+      {timings[event.id] && (
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-2">
+          <p className="text-xs font-semibold text-orange-600 mb-1">🤖 AI Timing Analysis</p>
+          <p className="text-xs text-orange-800 whitespace-pre-wrap">{timings[event.id]}</p>
+        </div>
+      )}
+
+      <div className="flex flex-wrap justify-between items-center gap-2">
+        <span className="text-xs text-gray-400">by {event.organizer?.name}</span>
+        <div className="flex flex-wrap gap-2">
+          {!isPast && !isOrganizer(event) && (
+            <button
+              onClick={() => joinEvent({ variables: { eventId: event.id } })}
+              disabled={hasJoined(event)}
+              className="text-xs bg-orange-600 text-white px-3 py-1 rounded-full hover:bg-orange-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
+              {hasJoined(event) ? "✅ Joined" : "🙋 Join Event"}
+            </button>
+          )}
+          {!isPast && (
+            <button onClick={() => handlePredict(event)} disabled={predicting[event.id]}
+              className="text-xs bg-orange-100 text-orange-700 px-3 py-1 rounded-full hover:bg-orange-200 transition disabled:opacity-50">
+              {predicting[event.id] ? "Analyzing..." : "🤖 Predict Timing"}
+            </button>
+          )}
+          {isOrganizer(event) && (
+            <button
+              onClick={() => { if (window.confirm("Delete this event?")) deleteEvent({ variables: { id: event.id } }); }}
+              className="text-xs bg-red-100 text-red-600 px-3 py-1 rounded-full hover:bg-red-200 transition">
+              🗑️ Delete
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -125,53 +212,17 @@ export default function EventsPage() {
 
         {loading && <p className="text-center text-gray-500 mt-10">Loading events...</p>}
 
-        {/* Upcoming Events */}
         {upcoming.length > 0 && (
           <>
             <h3 className="text-lg font-semibold text-gray-700 mb-3">📅 Upcoming</h3>
-            <div className="space-y-4 mb-8">
-              {upcoming.map((event) => (
-                <div key={event.id} className="bg-white rounded-xl shadow p-5 border border-gray-100">
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="text-base font-semibold text-gray-800">{event.title}</h3>
-                    <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full">Upcoming</span>
-                  </div>
-                  <p className="text-gray-600 text-sm mb-3">{event.description}</p>
-                  <div className="flex justify-between text-xs text-gray-500 mb-3">
-                    <span>🗓️ {new Date(event.date).toLocaleString()}</span>
-                    <span>📍 {event.location}</span>
-                  </div>
-                  {timings[event.id] && (
-                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-2">
-                      <p className="text-xs font-semibold text-orange-600 mb-1">🤖 AI Timing Analysis</p>
-                      <p className="text-xs text-orange-800 whitespace-pre-wrap">{timings[event.id]}</p>
-                    </div>
-                  )}
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs text-gray-400">by {event.organizer?.name}</span>
-                    <button onClick={() => handlePredict(event)} disabled={predicting[event.id]}
-                      className="text-xs bg-orange-100 text-orange-700 px-3 py-1 rounded-full hover:bg-orange-200 transition disabled:opacity-50">
-                      {predicting[event.id] ? "Analyzing..." : "🤖 Predict Best Timing"}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <div className="space-y-4 mb-8">{upcoming.map((e) => renderEventCard(e, false))}</div>
           </>
         )}
 
-        {/* Past Events */}
         {past.length > 0 && (
           <>
             <h3 className="text-lg font-semibold text-gray-500 mb-3">Past Events</h3>
-            <div className="space-y-3">
-              {past.map((event) => (
-                <div key={event.id} className="bg-gray-50 rounded-xl p-4 border border-gray-200 opacity-70">
-                  <p className="text-sm font-semibold text-gray-600">{event.title}</p>
-                  <p className="text-xs text-gray-400">{new Date(event.date).toLocaleDateString()} · {event.location}</p>
-                </div>
-              ))}
-            </div>
+            <div className="space-y-3">{past.map((e) => renderEventCard(e, true))}</div>
           </>
         )}
 

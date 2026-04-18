@@ -22,6 +22,8 @@ const typeDefs = gql`
     title: String!
     description: String!
     author: User!
+    status: String!
+    volunteers: [User]
     createdAt: String!
   }
 
@@ -48,6 +50,7 @@ const typeDefs = gql`
     rating: Int!
     business: BusinessListing!
     author: User!
+    ownerReply: String
   }
 
   type Deal {
@@ -64,6 +67,7 @@ const typeDefs = gql`
     date: String!
     location: String!
     organizer: User!
+    volunteers: [User]
   }
 
   type Query {
@@ -87,6 +91,16 @@ const typeDefs = gql`
     createReview(businessId: ID!, content: String!, rating: Int!): Review
     createDeal(businessId: ID!, title: String!, description: String!): Deal
     createEvent(title: String!, description: String!, date: String!, location: String!): Event
+    joinEvent(eventId: ID!): Event
+    volunteerForHelp(requestId: ID!): HelpRequest
+    fulfillHelpRequest(requestId: ID!): HelpRequest
+    deleteHelpRequest(id: ID!): Boolean
+    updateBusinessListing(id: ID!, name: String, description: String, category: String): BusinessListing
+    deleteBusinessListing(id: ID!): Boolean
+    deleteReview(id: ID!): Boolean
+    deleteDeal(id: ID!): Boolean
+    deleteEvent(id: ID!): Boolean
+    addReviewReply(reviewId: ID!, reply: String!): Review
   }
 `;
 

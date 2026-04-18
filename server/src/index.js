@@ -1,3 +1,4 @@
+require("dotenv").config({ path: require("path").join(__dirname, "../.env") });
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
@@ -13,7 +14,7 @@ async function startServer() {
   app.use(express.json());
 
   // ✅ STEP 1: CONNECT DB FIRST (IMPORTANT)
-  await mongoose.connect("mongodb://127.0.0.1:27017/neighborhoodHub");
+  await mongoose.connect(process.env.MONGO_URI);
   console.log("✅ MongoDB Connected");
 
   // ✅ STEP 2: THEN START GRAPHQL

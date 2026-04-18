@@ -16,6 +16,11 @@ const CREATE_DEAL = gql`
     createDeal(businessId: $businessId, title: $title, description: $description) { id title description }
   }
 `;
+const DELETE_DEAL = gql`
+  mutation DeleteDeal($id: ID!) {
+    deleteDeal(id: $id)
+  }
+`;
 
 export default function PostDeal() {
   const navigate = useNavigate();
@@ -27,6 +32,10 @@ export default function PostDeal() {
   const { data: dealsData, loading: dealsLoading, refetch } = useQuery(GET_DEALS, { variables: { businessId: selectedBizId }, skip: !selectedBizId });
   const [createDeal, { loading: creating }] = useMutation(CREATE_DEAL, {
     onCompleted: () => { refetch(); setForm({ title: "", description: "" }); setShowForm(false); },
+    onError: (e) => alert(e.message),
+  });
+  const [deleteDeal] = useMutation(DELETE_DEAL, {
+    onCompleted: () => refetch(),
     onError: (e) => alert(e.message),
   });
   const [form, setForm] = useState({ title: "", description: "" });
@@ -91,12 +100,19 @@ export default function PostDeal() {
                 <div className="space-y-4">
                   {dealsData?.getDeals?.map((deal) => (
                     <div key={deal.id} className="bg-white rounded-xl shadow p-5 border-l-4 border-purple-400">
-                      <div className="flex items-start gap-3">
-                        <span className="text-2xl">🏷️</span>
-                        <div>
-                          <h3 className="text-base font-semibold text-gray-800">{deal.title}</h3>
-                          <p className="text-gray-600 text-sm mt-1">{deal.description}</p>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3">
+                          <span className="text-2xl">🏷️</span>
+                          <div>
+                            <h3 className="text-base font-semibold text-gray-800">{deal.title}</h3>
+                            <p className="text-gray-600 text-sm mt-1">{deal.description}</p>
+                          </div>
                         </div>
+                        <button
+                          onClick={() => { if (window.confirm("Delete this deal?")) deleteDeal({ variables: { id: deal.id } }); }}
+                          className="text-xs bg-red-100 text-red-600 px-3 py-1 rounded-full hover:bg-red-200 transition shrink-0">
+                          🗑️ Delete
+                        </button>
                       </div>
                     </div>
                   ))}
