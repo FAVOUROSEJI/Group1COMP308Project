@@ -14,8 +14,7 @@ async function startServer() {
   app.use(express.json());
 
   // ✅ STEP 1: CONNECT DB FIRST (IMPORTANT)
-  await mongoose.connect(process.env.MONGO_URI);
-  console.log("✅ MongoDB Connected");
+await mongoose.connect(process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/neighborhoodHub");  console.log("✅ MongoDB Connected");
 
   // ✅ STEP 2: THEN START GRAPHQL
   const server = new ApolloServer({

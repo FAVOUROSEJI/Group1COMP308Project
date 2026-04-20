@@ -33,25 +33,42 @@ const GET_LISTINGS = gql`
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
-async function analyzeSentiment(reviews) {
-  try {
-    const reviewText = reviews.map((r, i) => `${i + 1}. [${r.rating}/5 stars] "${r.content}"`).join("\n");
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: `Analyze the sentiment of these customer reviews and provide a brief business feedback summary (3-4 sentences): what customers love, what needs improvement, and an overall sentiment score (Positive/Neutral/Negative).\n\nReviews:\n${reviewText}` }] }]
-        }),
+async function callGeminiWithRetry(prompt, retries = 3) {
+  const models = ["gemini-3-flash-preview"];
+  for (const model of models) {
+    for (let attempt = 0; attempt < retries; attempt++) {
+      try {
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+          }
+        );
+        if (res.status === 503) {
+          await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt)));
+          continue;
+        }
+        if (!res.ok) continue;
+        const data = await res.json();
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) return text;
+      } catch {
+        await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt)));
       }
-    );
-    const data = await res.json();
-    return data?.candidates?.[0]?.content?.parts?.[0]?.text || "Could not analyze sentiment.";
-  } catch {
-    return "AI sentiment analysis failed. Please check your Gemini API key.";
+    }
   }
+  return null;
 }
+
+async function analyzeSentiment(reviews) {
+  const reviewText = reviews.map((r, i) => `${i + 1}. [${r.rating}/5 stars] "${r.content}"`).join("\n");
+  const prompt = `Analyze the sentiment of these customer reviews and provide a brief business feedback summary (3-4 sentences): what customers love, what needs improvement, and an overall sentiment score (Positive/Neutral/Negative).\n\nReviews:\n${reviewText}`;
+  const result = await callGeminiWithRetry(prompt);
+  return result || "AI sentiment analysis is temporarily unavailable. Please try again in a moment.";
+}
+
 
 export default function CustomerReviews() {
   const navigate = useNavigate();

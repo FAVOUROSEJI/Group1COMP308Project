@@ -11,24 +11,40 @@ const GET_EVENTS = gql`
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
-async function matchVolunteersForEvent(event, helpRequests) {
-  try {
-    const requestList = helpRequests.slice(0, 10).map(r => `- "${r.title}": ${r.description} (by ${r.author?.name})`).join("\n");
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: `You are a community volunteer coordinator. For this event:\n"${event.title}" - ${event.description}\n\nCommunity members who have shown interest in helping:\n${requestList}\n\nBased on their help requests, suggest which community members might be good volunteers for this event and why. Also suggest what volunteer roles would be needed. Keep it concise (3-4 sentences).` }] }]
-        }),
+async function callGeminiWithRetry(prompt, retries = 3) {
+  const models = ["gemini-3-flash-preview"];
+  for (const model of models) {
+    for (let attempt = 0; attempt < retries; attempt++) {
+      try {
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+          }
+        );
+        if (res.status === 503) {
+          await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt)));
+          continue;
+        }
+        if (!res.ok) continue;
+        const data = await res.json();
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) return text;
+      } catch {
+        await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt)));
       }
-    );
-    const data = await res.json();
-    return data?.candidates?.[0]?.content?.parts?.[0]?.text || "Could not generate suggestions.";
-  } catch {
-    return "AI volunteer matching failed. Please check your Gemini API key.";
+    }
   }
+  return null;
+}
+
+async function matchVolunteersForEvent(event, helpRequests) {
+  const requestList = helpRequests.slice(0, 10).map(r => `- "${r.title}": ${r.description} (by ${r.author?.name})`).join("\n");
+  const prompt = `You are a community volunteer coordinator. For this event:\n"${event.title}" - ${event.description}\n\nCommunity members who have shown interest in helping:\n${requestList}\n\nBased on their help requests, suggest which community members might be good volunteers for this event and why. Also suggest what volunteer roles would be needed. Keep it concise (3-4 sentences).`;
+  const result = await callGeminiWithRetry(prompt);
+  return result || "AI volunteer matching is temporarily unavailable. Please try again in a moment.";
 }
 
 export default function VolunteerMatching() {

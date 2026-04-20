@@ -35,23 +35,41 @@ const DELETE_HELP_REQUEST = gql`
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
-async function matchVolunteersWithGemini(request) {
-  try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: `You are a community volunteer matching assistant. For this help request: "${request.title} - ${request.description}", suggest what type of volunteer or skill would be ideal to help, and provide 2-3 specific tips for finding the right volunteer in a neighborhood setting. Keep it concise and practical.` }] }]
-        }),
+async function callGeminiWithRetry(prompt, retries = 3) {
+  const models = ["gemini-3-flash-preview"];
+  for (const model of models) {
+    for (let attempt = 0; attempt < retries; attempt++) {
+      try {
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+          }
+        );
+        if (res.status === 503) {
+          // Service overloaded — wait and retry
+          await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt)));
+          continue;
+        }
+        if (!res.ok) continue; // Try next model on other errors
+        const data = await res.json();
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) return text;
+      } catch {
+        // Network error — retry
+        await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt)));
       }
-    );
-    const data = await res.json();
-    return data?.candidates?.[0]?.content?.parts?.[0]?.text || "Could not generate match.";
-  } catch {
-    return "AI volunteer matching failed. Please check your Gemini API key.";
+    }
   }
+  return null;
+}
+
+async function matchVolunteersWithGemini(request) {
+  const prompt = `You are a community volunteer matching assistant. For this help request: "${request.title} - ${request.description}", suggest what type of volunteer or skill would be ideal to help, and provide 2-3 specific tips for finding the right volunteer in a neighborhood setting. Keep it concise and practical.`;
+  const result = await callGeminiWithRetry(prompt);
+  return result || "AI volunteer matching is temporarily unavailable. Please try again in a moment.";
 }
 
 export default function HelpRequests() {

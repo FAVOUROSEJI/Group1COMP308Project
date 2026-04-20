@@ -13,21 +13,38 @@ const CREATE_POST = gql`
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
-async function summarizeWithGemini(text) {
-  try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contents: [{ parts: [{ text: `Summarize this community post in 2-3 sentences:\n\n"${text}"` }] }] }),
+async function callGeminiWithRetry(prompt, retries = 3) {
+  const models = ["gemini-3-flash-preview"];
+  for (const model of models) {
+    for (let attempt = 0; attempt < retries; attempt++) {
+      try {
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+          }
+        );
+        if (res.status === 503) {
+          await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt)));
+          continue;
+        }
+        if (!res.ok) continue;
+        const data = await res.json();
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) return text;
+      } catch {
+        await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt)));
       }
-    );
-    const data = await res.json();
-    return data?.candidates?.[0]?.content?.parts?.[0]?.text || "Could not generate summary.";
-  } catch {
-    return "AI summarization failed. Please check your Gemini API key.";
+    }
   }
+  return null;
+}
+
+async function summarizeWithGemini(text) {
+  const result = await callGeminiWithRetry(`Summarize this community post in 2-3 sentences:\n\n"${text}"`);
+  return result || "AI summarization is temporarily unavailable. Please try again in a moment.";
 }
 
 export default function NewsFeed() {
